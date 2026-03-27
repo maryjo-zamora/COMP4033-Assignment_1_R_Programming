@@ -1,0 +1,391 @@
+---
+title: "COMP 4033 - Health Informatics Data Analytics: Assignment 1 – Data Analysis using R Programming"
+output: html_document
+date: "Submission Date: March 28, 2026"
+---
+
+**Group 1 Members:**  
+Mary Joyce Zamora, Yeafi Awal, Janine Alyssa Atienza, Jhoanna Mae Agustin, Mencha Tembong, Ola Qutmeh, Sareea Waheed, Halil Ibrahim Kerim, Zubariya Siddiqui
+
+**Submitted to:**
+Professor Esther Shalini Rajasekaran and Professor Dhara Desai
+
+# Introduction
+
+For this assignment, we used the heart disease dataset to explore how different patient characteristics may be related to heart disease. The dataset includes several clinical and demographic variables, such as age, sex, resting blood pressure, cholesterol, maximum heart rate, exercise-induced angina, and oldpeak. These variables make it possible to look at patterns and compare patients with and without heart disease. Using R Programming, the dataset was cleaned, organized, and analyzed using summary statistics, graphs, and Pearson correlation. The purpose of the analysis was to identify which variables seem to provide the most meaningful insight into heart disease in this dataset.
+
+Datasource: https://www.kaggle.com/datasets/johnsmith88/heart-disease-dataset
+
+## Key Terms Used in the Dataset
+
+Before presenting the analysis, a few key terms from the dataset are defined below for clarity. Some of the variable names are abbreviated clinical terms, so these definitions help make the results easier to understand.
+
+- **target** – indicates whether heart disease is present (`1 = disease`, `0 = no disease`)
+- **age** – age of the patient in years
+- **sex** – sex of the patient (`1 = male`, `0 = female`)
+- **cp** – chest pain type
+- **trestbps** – resting blood pressure
+- **chol** – serum cholesterol level
+- **fbs** – fasting blood sugar greater than 120 mg/dL (`1 = true`, `0 = false`)
+- **restecg** – resting electrocardiographic results
+- **thalach** – maximum heart rate achieved during exercise
+- **exang** – exercise-induced angina (`1 = yes`, `0 = no`)
+- **oldpeak** – ST depression induced by exercise relative to rest
+- **slope** – the slope of the peak exercise ST segment
+- **ca** – number of major blood vessels colored by fluoroscopy
+- **thal** – thalassemia-related test result used in heart disease assessment
+
+**Important to understand:**
+
+
+- **ST segment** - is a part of the ECG wave that helps show how the heart is responding electrically after a heartbeat. Abnormal changes in this part of the tracing can sometimes indicate heart-related problems.
+
+
+- **ST depression** - is when the ST segment on an ECG drops below its usual level. This may indicate an abnormal heart response during exercise or stress.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## 1. Loading the Libraries and Dataset
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+heart <- read.csv("heart.csv")
+```
+
+
+## 2. Print the Structure of the Dataset
+
+```{r}
+str(heart)
+```
+
+The str() function shows the dataset’s structure, including 1025 observations and 14 variables. Most are numeric integers
+
+## 3. List the Variables in the Dataset
+
+```{r}
+names(heart)
+```
+
+
+The names() function lists all 14 column names in the dataset, representing the clinical attributes recorded during patients’ cardiac assessments.
+
+## 4. Print the Top 15 Rows of the Dataset
+
+```{r}
+head(heart, 15)
+```
+
+
+The head() function displays the first 15 rows of the heart dataset, allowing a quick preview of the data and any recent changes made to the columns.
+
+
+## 5. Write a User-Defined Function Using Any Variable from the Dataset
+
+```{r}
+# Simple function to classify resting blood pressure
+bp_category <- function(bp) {
+  if (bp < 120) {
+    return("Normal")
+  } else if (bp < 140) {
+    return("Elevated")
+  } else {
+    return("High")
+  }
+}
+
+bp_category(130)
+```
+
+
+A user-defined function called bp_category() was created to classify resting blood pressure into **Normal, Elevated, and High categories**. The function uses conditional statements to check the blood pressure value step by step: values **below 120** are classified as **Normal**, values from **120 to 139** are classified as **Elevated**, and values of **140 or above** are classified as **High**.
+
+
+## 6. Use Data Manipulation Techniques and Filter Rows Based on Logical Criteria
+
+```{r}
+# filter high-risk male patients using sex, cholesterol, and age
+high_risk_males <- heart %>%
+  filter(sex == 1, chol > 240, age > 55)
+
+# Printing results
+cat("Number of high-risk male patients:", nrow(high_risk_males), "\n")
+
+# viewing high_risk_males list
+head(high_risk_males, 10)
+```
+
+This code uses filtering conditions to select only male patients with higher cholesterol and older age. These criteria were chosen to create a subgroup that may be at greater risk, which helps make the analysis more focused.
+
+
+## 7. Identify the Dependent and Independent Variables, Use Reshaping Techniques, and Create a New Data Frame
+
+```{r}
+#Step 1: Identify the dependent variable
+# In this dataset, target is the dependent variable because it shows
+# whether heart disease is present or not.
+
+dependentvariable <- as.data.frame(cbind(heart$target))
+names(dependentvariable)[1] <- "Target"
+
+# View the dependent variable
+head(dependentvariable, n = 10)
+
+# Step 2: Identify the independent variables
+# These are the predictor variables we want to examine in relation to heart disease.
+independentvariables <- heart %>%
+  select(age, thalach, oldpeak, exang)
+
+# View the independent variables
+head(independentvariables, 10)
+
+# Step 3: Create a new data frame by combining the selected variables
+# This new data frame includes both the dependent and independent variables.
+new_dataframe <- heart %>%
+  select(age, thalach, oldpeak, exang, target)
+
+# View the new data frame
+head(new_dataframe, 10)
+
+# Step 4: Use reshaping techniques
+# Convert the independent variables from wide format to long format
+# so they are easier to compare in one column.
+
+heart_long <- new_dataframe %>%
+  pivot_longer(
+    cols = c(thalach, oldpeak, exang),
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# View the reshaped data
+head(heart_long, 15)
+```
+
+
+This code first identifies target as the dependent variable and then selects age, maximum heart rate, oldpeak, and exercise-induced angina as the independent variables. These variables were combined into a new data frame, and reshaping was used to change the data into long format so it would be easier to view and compare.
+
+
+## 8. Remove Missing Values in the Dataset
+
+```{r}
+colSums(is.na(heart))
+
+heart_clean <- na.omit(heart)
+
+cat("Rows before:", nrow(heart), "| Rows after:", nrow(heart_clean))
+```
+
+
+This code checks the dataset for missing values and then removes any rows with incomplete data. A cleaned version of the dataset, called heart_clean, was created, and the number of rows before and after cleaning was displayed to show if any changes were made.
+
+
+## 9. Identify and Remove Duplicated Data in the Dataset
+
+```{r}
+cat("Number of duplicated rows:", sum(duplicated(heart_clean)), "\n")
+
+heart_clean <- heart_clean[!duplicated(heart_clean), ]
+
+cat("Rows after removing duplicates:", nrow(heart_clean))
+```
+
+
+This code checks for duplicated rows in heart_clean, removes them, and then displays the number of rows left in the cleaned dataset.
+
+## 10. Reorder Multiple Rows in Descending Order
+
+```{r}
+# sort by cholesterol and age
+heart_sorted <- heart_clean %>%
+  arrange(desc(chol), desc(age))
+
+head(heart_sorted, 10)
+```
+
+
+This code creates a new data frame called heart_sorted by sorting heart_clean in descending order using arrange(desc(chol), desc(age)). This means the rows are ordered from highest to lowest cholesterol first, and then by highest to lowest age when cholesterol values are the same. The head(heart_sorted, 10) line displays the first 10 rows of the sorted dataset.
+
+
+## 11. Rename Some of the Column Names in the Dataset
+
+```{r}
+heart_renamed <- heart_clean %>%
+  rename(
+    Age = age,
+    Sex = sex,
+    ChestPainType = cp,
+    RestingBP = trestbps,
+    Cholesterol = chol,
+    FastingBS = fbs,
+    RestECG = restecg,
+    MaxHR = thalach,
+    ExerciseAngina = exang,
+    Oldpeak = oldpeak,
+    ST_Slope = slope,
+    NumVessels = ca,
+    Thalassemia = thal,
+    Target = target
+  )
+
+names(heart_renamed)
+```
+
+
+This code creates a new data frame called heart_renamed by changing the original column names in heart_clean to clearer and more readable labels using rename(). For example, age is changed to Age, chol to Cholesterol, and target to Target. The names(heart_renamed) line then displays the updated column names to confirm that the renaming was applied correctly.
+
+
+## 12. Add New Variables in the Data Frame Using a Mathematical Function
+
+```{r}
+# create Age_Group
+heart_clean$Age_Group <- case_when(
+  heart_clean$age < 40 ~ "Young",
+  heart_clean$age >= 40 & heart_clean$age < 60 ~ "Middle-aged",
+  TRUE ~ "Senior"
+)
+
+# create cholesterol category and mathematical variables
+heart_clean$chol_category <- case_when(
+  heart_clean$chol < 200 ~ "Desirable",
+  heart_clean$chol >= 200 & heart_clean$chol < 240 ~ "Borderline High",
+  TRUE ~ "High"
+)
+
+heart_clean$chol_double <- heart_clean$chol * 2
+heart_clean$bp_hr_ratio <- round(heart_clean$trestbps / heart_clean$thalach, 3)
+
+# create a risk score
+heart_clean$risk_score <- 0.3 * heart_clean$age +
+                          0.4 * heart_clean$chol +
+                          0.3 * heart_clean$trestbps
+
+head(heart_clean[, c("age", "chol", "chol_double", "trestbps", "thalach", "bp_hr_ratio", "risk_score")], 10)
+```
+
+
+This code adds several new variables to heart_clean. Age_Group and chol_category are created using case_when() to group age and cholesterol into categories. chol_double is created by multiplying cholesterol by 2, and bp_hr_ratio is calculated by dividing resting blood pressure by maximum heart rate and rounding the result to three decimal places. A risk_score variable is also created using a weighted combination of age, cholesterol, and resting blood pressure. The last line displays the first 10 rows of selected columns to show the newly added variables.
+
+
+## 13. Create a Training Set Using Random Number Generator Engine
+
+```{r}
+set.seed(1234)
+
+train_index <- sample(1:nrow(heart_clean), size = 0.70 * nrow(heart_clean))
+TrainingSet <- heart_clean[train_index, ]
+TestingSet  <- heart_clean[-train_index, ]
+
+dim(TrainingSet)
+dim(TestingSet)
+```
+
+
+This code first uses set.seed(1234) to make the random sampling. It then uses sample() to randomly select 70% of the rows in heart_clean and stores their row numbers in train_index. Those rows are used to create TrainingSet, while the remaining rows are placed in TestingSet. The dim() function is then used to display the number of rows and columns in each dataset.
+
+
+## 14. Print the Summary Statistics of the Dataset
+
+```{r}
+summary(heart_clean)
+```
+
+## 15. Perform Statistical Functions: Mean, Median, Mode, and Range
+
+```{r}
+get_mode <- function(x) {
+  uniq_vals <- unique(x)
+  uniq_vals[which.max(tabulate(match(x, uniq_vals)))]
+}
+
+cat("=== Cholesterol ===\n")
+cat("Mean: ", mean(heart_clean$chol), "\n")
+cat("Median: ", median(heart_clean$chol), "\n")
+cat("Mode: ", get_mode(heart_clean$chol), "\n")
+cat("Range: ", range(heart_clean$chol), "\n\n")
+
+cat("=== Maximum Heart Rate ===\n")
+cat("Mean: ", mean(heart_clean$thalach), "\n")
+cat("Median: ", median(heart_clean$thalach), "\n")
+cat("Mode: ", get_mode(heart_clean$thalach), "\n")
+cat("Range: ", range(heart_clean$thalach), "\n")
+```
+
+
+This code first defines a custom function called get_mode() to find the mode of a numeric variable. It then uses mean(), median(), get_mode(), and range() to calculate the mean, median, mode, and range for cholesterol and maximum heart rate in heart_clean. The cat() function is used to print the results in a clear labeled format.
+
+
+## 16. Plot a Scatter Plot for Any 2 Variables in the Dataset
+
+```{r}
+
+ggplot(heart_clean, aes(x = age, y = thalach, color = as.factor(target))) +
+  geom_point(alpha = 0.6, size = 2) +
+  labs(
+    title = "Scatter Plot: Age vs Maximum Heart Rate",
+    x = "Age",
+    y = "Maximum Heart Rate",
+    color = "Heart Disease"
+  ) +
+  scale_color_discrete(labels = c("No Disease", "Disease")) +
+  theme_minimal()
+```
+
+
+**Analysis: Age vs. Maximum Heart Rate**
+
+The group examined the relationship between age and maximum heart rate because both are continuous variables and are known to be related in cardiovascular function. The scatter plot shows a downward trend, indicating an inverse relationship between age and maximum heart rate. As age increases, maximum heart rate tends to decrease. The points are somewhat spread out, suggesting that the relationship is moderate rather than strong. This means that while there is a general pattern, there is still variability among individuals. The color grouping shows that both patients with and without heart disease generally follow a similar downward trend, although the distribution of points suggests some differences between the groups.
+
+
+## 17. Plot a Bar Plot for Any 2 Variables in the Dataset
+
+```{r}
+
+bar_data <- heart_clean %>%
+  group_by(target) %>%
+  summarise(avg_oldpeak = mean(oldpeak))
+
+ggplot(bar_data, aes(x = factor(target), y = avg_oldpeak, fill = factor(target))) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Average Oldpeak by Heart Disease Status",
+    x = "Heart Disease Status",
+    y = "Average Oldpeak",
+    fill = "Heart Disease Status"
+  ) +
+  scale_x_discrete(labels = c("No Disease", "Disease")) +
+  scale_fill_discrete(labels = c("No Disease", "Disease")) +
+  theme_minimal()
+```
+
+
+**Analysis: Average Oldpeak by Heart Disease Status**
+
+
+Oldpeak represents ST depression during exercise relative to rest, which reflects how the heart responds under stress. The bar plot compares the average oldpeak between patients with and without heart disease. In this dataset, patients without heart disease appear to have a higher average oldpeak compared to those with heart disease. This pattern is somewhat unexpected, as higher oldpeak is typically associated with cardiac stress (Kashou et al., 2023). This suggests that oldpeak alone may not be a strong predictor of heart disease and highlights the importance of considering multiple variables when analyzing cardiovascular risk.
+
+
+Source:
+Kashou, A. H., Basit, H., & Malik, A. (2023). ST segment. In StatPearls. StatPearls Publishing. https://www.ncbi.nlm.nih.gov/books/NBK459364/
+
+## 18. Find the Correlation Between Any 2 Variables by Applying Pearson Correlation
+
+```{r}
+
+# age vs maximum heart rate 
+cor_value <- cor(heart_clean$age, heart_clean$thalach, method = "pearson")
+cor_value
+```
+
+
+**Analysis**: 
+
+To quantify the relationship observed in the scatter plot, the group applied Pearson correlation between age and maximum heart rate. The correlation coefficient is **-0.3952352**, indicating a moderate negative relationship. This means that as age increases, maximum heart rate tends to decrease. In simpler terms, older patients in this dataset generally had lower maximum heart rates than younger patients. Although the relationship is not strong, it is consistent enough to show a noticeable pattern.
+
+# Conclusion
+Based on the group analysis, heart disease in this dataset does not seem to be explained by just one factor like cholesterol. Instead, it becomes clearer when looking at multiple variables together, especially age, resting blood pressure, maximum heart rate, exercise-induced angina, and oldpeak. These results suggest that cardiovascular and exercise-related variables can help show differences between patients with and without heart disease, while also showing how some variables are related to each other. For example, the moderate negative correlation between age and maximum heart rate suggests that older patients generally had lower maximum heart rates in this dataset. Overall, the findings show that heart disease is influenced by a combination of factors rather than a single variable.
